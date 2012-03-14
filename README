@@ -1,1 +1,18 @@
 Simple Python interface to access ADB tool
+
+How to install:
+===============
+
+easy_install Way: easy_install pyadb
+
+More instructions: http://wiki.python.org/moin/CheeseShopTutorial
+
+Simple usage:
+=============
+
+from pyadb.adb import ADB
+(...)
+myadb = ADB('~/android/platform-tools/adb')
+(...)
+
+You can view a "complete" example in "examples/whatsapp.py"
