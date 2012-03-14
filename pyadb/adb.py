@@ -186,7 +186,7 @@ class ADB():
         if not mode in (self.REBOOT_RECOVERY,self.REBOOT_BOOTLOADER):
             self.__error = "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER"
             return self.__output
-        self.run_cmd("reboot %" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader")
+        self.run_cmd("reboot %s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader")
         return self.__output
     
     def set_adb_root(self,mode):
