@@ -16,7 +16,7 @@ setup(
     description = ("Simple python module to access ADB tool"),
     license = "BSD",
     keywords = "python android adb",
-    url = "http://packages.python.org/an_example_pypi_project",
+    url = "https://github.com/sch3m4/pyadb",
     packages=['pyadb'],
     long_description=read('README'),
     classifiers=[
