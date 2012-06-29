@@ -17,7 +17,7 @@ setup(
     license = "BSD",
     keywords = "python android adb",
     url = "https://github.com/sch3m4/pyadb",
-    packages=['pyadb'],
+    packages=['pyadb','example'],
     long_description=read('README'),
     classifiers=[
         "Development Status :: 3 - Alpha",
