@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python
 
 """
 Simple pyadb example to retrieve whatsapp
@@ -12,9 +12,9 @@ databases from the selected device.
 
 [+] Restarting ADB server...
 [+] Detecting devices... OK
-    0: S55702349b51e
+    0: XXXXXXXXXXX
 
-[+] Using "S55702349b51e" as target device
+[+] Using "XXXXXXXXXXX" as target device
 [+] Looking for 'su' binary:  /system/xbin/su
 [+] Checking if 'su' binary can give root access:
     - Yes

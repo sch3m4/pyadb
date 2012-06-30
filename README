@@ -3,6 +3,16 @@ Simple python module to interact with the ADB tool
 How to install:
 ===============
 
+[+] Debian Package:
+
+$ sudo dpkg -i python-pyadb_0.1.0-1_all.deb 
+Selecting previously unselected package python-pyadb.
+(Leyendo la base de datos ... 322039 ficheros o directorios instalados actualmente.)
+Desempaquetando python-pyadb (de python-pyadb_0.1.0-1_all.deb) ...
+Configurando python-pyadb (0.1.0-1) ...
+$
+
+
 [+] easy_install
 
 $ sudo easy_install pyadb
@@ -13,6 +23,7 @@ Finished processing dependencies for pyadb
 $
 
 [+] setup.py
+
 $ python setup.py build
 running build
 running build_py
@@ -34,11 +45,18 @@ $
 More instructions: http://wiki.python.org/moin/CheeseShopTutorial
 
 Usage:
-=============
+======
 
-from pyadb.adb import ADB
-(...)
-myadb = ADB('~/android/platform-tools/adb')
-(...)
+$ python
+Python 2.7.3 (default, Jun 15 2012, 18:14:05) 
+[GCC 4.7.0] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from pyadb.adb import ADB
+>>> adb = ADB('~/android/platform-tools/adb')
+>>> print adb.pyadb_version()
+0.1.0
+>>> quit()
+$
+
 
 You can view a "complete" example in "examples/whatsapp.py"
