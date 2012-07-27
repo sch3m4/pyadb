@@ -6,7 +6,7 @@ databases from the selected device.
 
 ~/pyadb/example$ python whatsapp.py
 
-[+] Using PyADB version 0.1.0
+[+] Using PyADB version 0.1.1
 [+] Verifying ADB path... OK
 [+] ADB Version: 1.0.29
 
@@ -52,7 +52,7 @@ try:
     from sys import stdin,exit
     from os.path import basename
     from os import mkdir
-    from pyadb.adb import ADB
+    from pyadb import ADB
 except ImportError,e:
     print "[f] Required module missing. %s" % e.args[0]
     exit(-1)

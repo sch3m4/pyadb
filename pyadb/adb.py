@@ -13,7 +13,7 @@ except ImportError,e:
 
 class ADB():
     
-    PYADB_VERSION = "0.1.0"
+    PYADB_VERSION = "0.1.1"
     
     __adb_path = None
     __output = None

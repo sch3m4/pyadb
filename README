@@ -3,14 +3,16 @@ Simple python module to interact with the ADB tool
 How to install:
 ===============
 
-[+] Debian Package:
+Currently there is no Debian package available for PyADB. (Will be fixed soon...)
 
-$ sudo dpkg -i python-pyadb_0.1.0-1_all.deb 
-Selecting previously unselected package python-pyadb.
-(Leyendo la base de datos ... 322039 ficheros o directorios instalados actualmente.)
-Desempaquetando python-pyadb (de python-pyadb_0.1.0-1_all.deb) ...
-Configurando python-pyadb (0.1.0-1) ...
-$
+#[+] Debian Package:
+#
+#$ sudo dpkg -i python-pyadb_0.1.0-1_all.deb 
+#Selecting previously unselected package python-pyadb.
+#(Leyendo la base de datos ... 322039 ficheros o directorios instalados actualmente.)
+#Desempaquetando python-pyadb (de python-pyadb_0.1.0-1_all.deb) ...
+#Configurando python-pyadb (0.1.0-1) ...
+#$
 
 
 [+] easy_install
@@ -38,8 +40,8 @@ running build
 running build_py
 running install_lib
 running install_egg_info
-Removing /usr/local/lib/python2.7/dist-packages/pyadb-0.1.0.egg-info
-Writing /usr/local/lib/python2.7/dist-packages/pyadb-0.1.0.egg-info
+Removing /usr/local/lib/python2.7/dist-packages/pyadb-0.1.1.egg-info
+Writing /usr/local/lib/python2.7/dist-packages/pyadb-0.1.1.egg-info
 $
 
 More instructions: http://wiki.python.org/moin/CheeseShopTutorial
@@ -51,10 +53,10 @@ $ python
 Python 2.7.3 (default, Jun 15 2012, 18:14:05) 
 [GCC 4.7.0] on linux2
 Type "help", "copyright", "credits" or "license" for more information.
->>> from pyadb.adb import ADB
+>>> from pyadb import ADB
 >>> adb = ADB('~/android/platform-tools/adb')
 >>> print adb.pyadb_version()
-0.1.0
+0.1.1
 >>> quit()
 $
 
