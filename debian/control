@@ -1,0 +1,13 @@
+Source: pyadb
+Maintainer: Chema Garcia <chema@safetybits.net>
+Section: python
+Priority: optional
+Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 7)
+Standards-Version: 3.9.1
+
+Package: python-pyadb
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Simple python module to interact with the ADB tool
+ Simple python module to interact with the Android Debug Bridge (ADB) tool
+
