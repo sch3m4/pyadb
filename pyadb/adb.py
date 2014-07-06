@@ -5,7 +5,7 @@
 
 try:
     import sys
-    from os import popen3 as pipe
+    import subprocess
 except ImportError,e:
     # should never be reached
     print "[f] Required module missing. %s" % e.args[0]
@@ -82,14 +82,17 @@ class ADB():
         if self.__adb_path is None:
             self.__error = "ADB path not set"
             return
+        
+        # For compat of windows
+        cmd_list = self.__build_command__(cmd).split(" ")
 
         try:
-            w,r,e = pipe(self.__build_command__(cmd), mode='r')
-            self.__output = self.__read_output__(r)
-            self.__error = self.__read_output__(e)
-            r.close()
-            w.close()
-            e.close()
+            p = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
+                                 stdout = subprocess.PIPE, \
+                                 stderr = subprocess.PIPE, shell = False)
+            self.__output = self.__read_output__(p.stdou)
+            self.__error = self.__read_output__(p.stderr)
+            p.terminate()
         except:
             pass
 
