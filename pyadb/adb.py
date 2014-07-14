@@ -90,7 +90,7 @@ class ADB():
             p = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
                                  stdout = subprocess.PIPE, \
                                  stderr = subprocess.PIPE, shell = False)
-            self.__output = self.__read_output__(p.stdou)
+            self.__output = self.__read_output__(p.stdout)
             self.__error = self.__read_output__(p.stderr)
             p.terminate()
         except:
