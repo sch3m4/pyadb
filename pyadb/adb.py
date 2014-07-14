@@ -13,7 +13,7 @@ except ImportError,e:
 
 class ADB():
     
-    PYADB_VERSION = "0.1.1"
+    PYADB_VERSION = "0.1.2"
     
     __adb_path = None
     __output = None
@@ -40,24 +40,29 @@ class ADB():
         self.__output = None
         self.__error = None
 
-    def __read_output__(self,fd):
-        ret = ''
-        while 1:
-            line = fd.readline()
-            if not line:
-                break
-            ret += line
+    def __parse_output__(self,outstr):
+        ret = None
 
-        if len(ret) == 0:
-            ret = None
+        if(len(outstr) > 0):
+            ret = outstr.splitlines()
 
         return ret
 
     def __build_command__(self,cmd):
+
+        ret = None
+
         if self.__devices is not None and len(self.__devices) > 1 and self.__target is None:
             self.__error = "Must set target device first"
-            return None
-        return self.__adb_path + ' ' + cmd if self.__target is None else self.__adb_path + ' ' + ' -s ' + self.__target + ' ' + cmd
+            return ret
+
+        # Modified function to directly return command list for Popen
+        if( self.__target is None ):
+            ret = self.__adb_path + " " + cmd
+        else:
+            ret = self.__adb_path + " -s " + self.__target + " " + cmd
+
+        return ret
     
     def get_output(self):
         return self.__output
@@ -84,15 +89,19 @@ class ADB():
             return
         
         # For compat of windows
-        cmd_list = self.__build_command__(cmd).split(" ")
+        cmd_list = self.__build_command__(cmd)
 
         try:
-            p = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
-                                 stdout = subprocess.PIPE, \
-                                 stderr = subprocess.PIPE, shell = False)
-            self.__output = self.__read_output__(p.stdout)
-            self.__error = self.__read_output__(p.stderr)
-            p.terminate()
+            (self.__output, self.__error) = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
+                                                       stdout = subprocess.PIPE, \
+                                                       stderr = subprocess.PIPE, shell = False).communicate()
+
+            if( len(self.__output) == 0 ):
+                self.__output = None
+
+            if( len(self.__error) == 0 ):
+                self.__error = None
+
         except:
             pass
 
@@ -191,6 +200,7 @@ class ADB():
         if self.__error is not None:
             return ''
         try:
+            print self.__output.partition('\n')
             self.__devices = self.__output.partition('\n')[2].replace('device','').split()
             
             if self.__devices[1:] == ['no','permissions']:
@@ -274,9 +284,11 @@ class ADB():
         """
         self.__clean__()
         self.run_cmd('pull \"%s\" \"%s\"' % (remote,local) )
-        if "bytes in" in self.__error:
+
+        if self.__error is not None and "bytes in" in self.__error:
             self.__output = self.__error
             self.__error = None
+
         return self.__output
 
     def push_local_file(self,local,remote):
