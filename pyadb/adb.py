@@ -56,11 +56,22 @@ class ADB():
             self.__error = "Must set target device first"
             return ret
 
-        # Modified function to directly return command list for Popen
-        if( self.__target is None ):
-            ret = self.__adb_path + " " + cmd
+        # Modified function to directly return command set for Popen
+        #
+        # Unfortunately, there is something odd going on and the argument list is not being properly
+        # converted to a string on the windows 7 test systems.  To accomodate, this block explitely
+        # detects windows vs. non-windows and builds the OS dependent command output
+        #
+        if sys.platform.startswith('win'):
+            if( self.__target is None ):
+                ret = self.__adb_path + " " + cmd
+            else:
+                ret = self.__adb_path + " -s " + self.__target + " " + cmd
         else:
-            ret = self.__adb_path + " -s " + self.__target + " " + cmd
+            if( self.__target is None ):
+                ret = [self.__adb_path , cmd]
+            else:
+                ret = [self.__adb_path, "-s", self.__target, cmd]
 
         return ret
     
