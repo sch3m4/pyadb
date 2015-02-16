@@ -1,10 +1,11 @@
 # Author: Chema Garcia (aka sch3m4)
-# Contact: chema@safetybits.net | http://safetybits.net/contact 
+# Contact: chema@safetybits.net | @sch3m4 | http://safetybits.net/contact 
 # Homepage: http://safetybits.net
 # Project Site: http://github.com/sch3m4/pyadb
 
 try:
     import sys
+    import os
     import subprocess
 except ImportError,e:
     # should never be reached
@@ -13,7 +14,7 @@ except ImportError,e:
 
 class ADB():
     
-    PYADB_VERSION = "0.1.2"
+    PYADB_VERSION = "0.1.3"
     
     __adb_path = None
     __output = None
@@ -49,7 +50,6 @@ class ADB():
         return ret
 
     def __build_command__(self,cmd):
-
         ret = None
 
         if self.__devices is not None and len(self.__devices) > 1 and self.__target is None:
@@ -83,7 +83,7 @@ class ADB():
     
     def lastFailed(self):
         """
-        Was failed the last command?
+        Did the last command failed?
         """
         if self.__output is None and self.__error is not None:
             return True
@@ -91,7 +91,7 @@ class ADB():
 
     def run_cmd(self,cmd):
         """
-        Run a command against adb tool ($ adb <cmd>)
+        Run a command by using adb tool ($ adb <cmd>)
         """
         self.__clean__()
 
@@ -142,7 +142,10 @@ class ADB():
         """
         Set ADB tool path
         """
+	if os.path.isfile(adb_path) is False:
+		return False
         self.__adb_path = adb_path
+	return True
 
     def get_adb_path(self):
         """
@@ -185,7 +188,7 @@ class ADB():
 
     def wait_for_device(self):
         """
-        Block until device is online
+        Blocks until device is online
         adb wait-for-device
         """
         self.__clean__()
@@ -203,7 +206,7 @@ class ADB():
 
     def get_devices(self):
         """
-        Return a list of connected devices
+        Returns a list of connected devices
         adb devices
         """
         error = 0
@@ -473,7 +476,7 @@ class ADB():
         
         if self.__output is None: # not found
             self.__error = "'%s' was not found" % name
-        elif self.__output.strip() == "which: not found": # which binary not available
+        elif self.__output.strip() == "which: not found": # 'which' binary not available
             self.__output = None
             self.__error = "which binary not found"
         else:
