@@ -6,7 +6,7 @@ def read(fname):
 
 setup(
     name = "pyadb",
-    version = "0.1.3",
+    version = "0.1.4",
     author = "Chema Garcia",
     author_email = "chema@safetybits.net",
     description = ("Simple python module to interact with the ADB tool"),
@@ -16,7 +16,7 @@ setup(
     packages=['pyadb'],
     long_description=read('README'),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Alpha",
         "Topic :: Utilities",
         "License :: OSI Approved :: BSD License",
     ],

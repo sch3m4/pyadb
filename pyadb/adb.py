@@ -13,8 +13,7 @@ except ImportError,e:
     sys.exit(-1)
 
 class ADB():
-    
-    PYADB_VERSION = "0.1.3"
+    PYADB_VERSION = "0.1.4"
     
     __adb_path = None
     __output = None
@@ -63,15 +62,23 @@ class ADB():
         # detects windows vs. non-windows and builds the OS dependent command output
         #
         if sys.platform.startswith('win'):
-            if( self.__target is None ):
-                ret = self.__adb_path + " " + cmd
+            ret = self.__adb_path + " "
+            if( self.__target is not None ):
+                ret += "-s " + self.__target + " "
+            if type(cmd) == type([]):
+                ret += ' '.join(cmd)
             else:
-                ret = self.__adb_path + " -s " + self.__target + " " + cmd
+                ret += cmd
         else:
-            if( self.__target is None ):
-                ret = [self.__adb_path , cmd]
+            ret = [self.__adb_path]
+            if( self.__target is not None ):
+                ret += ["-s", self.__target]
+                
+            if type(cmd) == type([]):
+                for i in cmd:
+                    ret.append(i)
             else:
-                ret = [self.__adb_path, "-s", self.__target, cmd]
+                ret += [cmd]
 
         return ret
     
@@ -83,7 +90,7 @@ class ADB():
     
     def lastFailed(self):
         """
-        Did the last command failed?
+        Did the last command fail?
         """
         if self.__output is None and self.__error is not None:
             return True
@@ -91,7 +98,7 @@ class ADB():
 
     def run_cmd(self,cmd):
         """
-        Run a command by using adb tool ($ adb <cmd>)
+        Runs a command by using adb tool ($ adb <cmd>)
         """
         self.__clean__()
 
@@ -140,12 +147,12 @@ class ADB():
 
     def set_adb_path(self,adb_path):
         """
-        Set ADB tool path
+        Sets ADB tool absolute path
         """
-	if os.path.isfile(adb_path) is False:
-		return False
+        if os.path.isfile(adb_path) is False:
+            return False
         self.__adb_path = adb_path
-	return True
+        return True
 
     def get_adb_path(self):
         """
@@ -183,7 +190,7 @@ class ADB():
         adb restore <file>
         """
         self.__clean__()
-        self.run_cmd('restore %s' % file_name)
+        self.run_cmd(['restore' , file_name ])
         return self.__output
 
     def wait_for_device(self):
@@ -214,7 +221,6 @@ class ADB():
         if self.__error is not None:
             return ''
         try:
-            print self.__output.partition('\n')
             self.__devices = self.__output.partition('\n')[2].replace('device','').split()
             
             if self.__devices[1:] == ['no','permissions']:
@@ -270,10 +276,10 @@ class ADB():
         if not mode in (self.REBOOT_RECOVERY,self.REBOOT_BOOTLOADER):
             self.__error = "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER"
             return self.__output
-        self.run_cmd("reboot %s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader")
+        self.run_cmd(["reboot", "%s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader"])
         return self.__output
 
-    def set_adb_root(self,mode):
+    def set_adb_root(self):
         """
         restarts the adbd daemon with root permissions
         adb root
@@ -297,7 +303,7 @@ class ADB():
         adb pull remote local
         """
         self.__clean__()
-        self.run_cmd('pull \"%s\" \"%s\"' % (remote,local) )
+        self.run_cmd(['pull',remote , local] )
 
         if self.__error is not None and "bytes in" in self.__error:
             self.__output = self.__error
@@ -311,7 +317,7 @@ class ADB():
         adb push local remote
         """
         self.__clean__()
-        self.run_cmd('push \"%s\" \"%s\"' % (local,remote) )
+        self.run_cmd(['push',local,remote] )
         return self.__output
 
     def shell_command(self,cmd):
@@ -320,7 +326,7 @@ class ADB():
         adb shell <cmd>
         """
         self.__clean__()
-        self.run_cmd('shell %s' % cmd)
+        self.run_cmd(['shell',cmd])
         return self.__output
 
     def listen_usb(self):
@@ -338,7 +344,7 @@ class ADB():
         adb tcpip <port>
         """
         self.__clean__()
-        self.run_cmd("tcpip %s" % port)
+        self.run_cmd(['tcpip',port])
         return self.__output
 
     def get_bugreport(self):
@@ -365,7 +371,7 @@ class ADB():
         adb logcat <filter>
         """
         self.__clean__()
-        self.run_cmd("logcat %s" % lcfilter)
+        self.run_cmd(['logcat',lcfilter])
         return self.__output
 
     def run_emulator(self,cmd=""):
@@ -373,7 +379,7 @@ class ADB():
         Run emulator console command
         """
         self.__clean__()
-        self.run_cmd("emu %s" % cmd)
+        self.run_cmd(['emu',cmd])
         return self.__output
     
     def connect_remote (self,host=DEFAULT_TCP_HOST,port=DEFAULT_TCP_PORT):
@@ -382,7 +388,7 @@ class ADB():
         adb connect host:port
         """
         self.__clean__()
-        self.run_cmd("connect %s:%s" % ( host , port ) )
+        self.run_cmd(['connect',"%s:%s" % ( host , port ) ] )
         return self.__output
     
     def disconnect_remote (self , host=DEFAULT_TCP_HOST , port=DEFAULT_TCP_PORT):
@@ -391,7 +397,7 @@ class ADB():
         adb disconnect host:port
         """
         self.__clean__()
-        self.run_cmd("disconnect %s:%s" % ( host , port ) )
+        self.run_cmd(['disconnect',"%s:%s" % ( host , port ) ] )
         return self.__output
     
     def ppp_over_usb(self,tty=None,params=""):
@@ -403,9 +409,9 @@ class ADB():
         if tty is None:
             return self.__output
         
-        cmd = "ppp %s" % tty
+        cmd = ["ppp",tty]
         if params != "":
-            cmd += " %s" % params
+            cmd += params
             
         self.run_cmd(cmd)
         return self.__output
@@ -416,7 +422,7 @@ class ADB():
         adb sync <dir>
         """
         self.__clean__()
-        self.run_cmd("sync %s" % directory )
+        self.run_cmd(['sync',directory])
         return self.__output
     
     def forward_socket(self,local=None,remote=None):
@@ -427,7 +433,7 @@ class ADB():
         self.__clean__()
         if local is None or remote is None:
             return self.__output
-        self.run_cmd("forward %s %s" % (local,remote) )
+        self.run_cmd(['forward',local,remote])
         return self.__output
 
 
@@ -439,7 +445,7 @@ class ADB():
         self.__clean__()
         if package is None:
             return self.__output
-        cmd = "uninstall %s" % (package if keepdata is True else "-k %s" % package )
+        cmd = ['uninstall',"%s" % (package if keepdata is True else "-k %s" % package )]
         self.run_cmd(cmd)
         return self.__output
 
@@ -464,7 +470,7 @@ class ADB():
         if sdcard is True:
             cmd += "-s "
         
-        self.run_cmd("%s %s" % (cmd , pkgapp) )
+        self.run_cmd([cmd,pkgapp])
         return self.__output
 
     def find_binary(self,name=None):
@@ -472,7 +478,7 @@ class ADB():
         Look for a binary file on the device
         """
         
-        self.shell_command("which %s" % name)
+        self.shell_command(['which',name])
         
         if self.__output is None: # not found
             self.__error = "'%s' was not found" % name
