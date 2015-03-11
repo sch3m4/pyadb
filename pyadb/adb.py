@@ -61,6 +61,8 @@ class ADB():
         # converted to a string on the windows 7 test systems.  To accomodate, this block explitely
         # detects windows vs. non-windows and builds the OS dependent command output
         #
+        # Command in 'list' format: Thanks to Gil Rozenberg for reporting the issue
+        #
         if sys.platform.startswith('win'):
             ret = self.__adb_path + " "
             if( self.__target is not None ):
