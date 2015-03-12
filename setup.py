@@ -9,7 +9,7 @@ setup(
     version = "0.1.4",
     author = "Chema Garcia",
     author_email = "chema@safetybits.net",
-    description = ("Simple python module to interact with the ADB tool"),
+    description = ("Simple python module to interact with Android Debug Bridge tool"),
     license = "BSD",
     keywords = "python android adb",
     url = "https://github.com/sch3m4/pyadb",
