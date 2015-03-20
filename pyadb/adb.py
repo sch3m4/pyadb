@@ -18,6 +18,7 @@ class ADB():
     __adb_path = None
     __output = None
     __error = None
+    __return = 0
     __devices = None
     __target = None
 
@@ -39,6 +40,7 @@ class ADB():
     def __clean__(self):
         self.__output = None
         self.__error = None
+        self.__return = 0
 
     def __parse_output__(self,outstr):
         ret = None
@@ -53,6 +55,7 @@ class ADB():
 
         if self.__devices is not None and len(self.__devices) > 1 and self.__target is None:
             self.__error = "Must set target device first"
+            self.__return = 1
             return ret
 
         # Modified function to directly return command set for Popen
@@ -89,12 +92,15 @@ class ADB():
     
     def get_error(self):
         return self.__error
-    
+
+    def get_return_code(self):
+        return self.__return
+
     def lastFailed(self):
         """
         Did the last command fail?
         """
-        if self.__output is None and self.__error is not None:
+        if self.__output is None and self.__error is not None and self.__return:
             return True
         return False
 
@@ -106,15 +112,18 @@ class ADB():
 
         if self.__adb_path is None:
             self.__error = "ADB path not set"
+            self.__return = 1
             return
         
         # For compat of windows
         cmd_list = self.__build_command__(cmd)
 
         try:
-            (self.__output, self.__error) = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
-                                                       stdout = subprocess.PIPE, \
-                                                       stderr = subprocess.PIPE, shell = False).communicate()
+            adb_proc = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
+                                  stdout = subprocess.PIPE, \
+                                  stderr = subprocess.PIPE, shell = False)
+            (self.__output, self.__error) = adb_proc.communicate()
+            self.__return = adb_proc.returncode
 
             if( len(self.__output) == 0 ):
                 self.__output = None
@@ -241,6 +250,7 @@ class ADB():
         self.__clean__()
         if device is None or not device in self.__devices:
             self.__error = 'Must get device list first'
+            self.__return = 1
             return False
         self.__target = device
         return True
@@ -277,6 +287,7 @@ class ADB():
         self.__clean__()
         if not mode in (self.REBOOT_RECOVERY,self.REBOOT_BOOTLOADER):
             self.__error = "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER"
+            self.__return = 1
             return self.__output
         self.run_cmd(["reboot", "%s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader"])
         return self.__output
