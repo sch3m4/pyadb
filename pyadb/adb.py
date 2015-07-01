@@ -458,8 +458,12 @@ class ADB():
         self.__clean__()
         if package is None:
             return self.__output
-        cmd = ['uninstall',"%s" % (package if keepdata is True else "-k %s" % package )]
-        self.run_cmd(cmd)
+
+        cmd = 'uninstall '
+        if keepdata:
+            cmd += '-k '
+        cmd += package
+        self.run_cmd(cmd.split())
         return self.__output
 
     def install(self,fwdlock=False,reinstall=False,sdcard=False,pkgapp=None):
@@ -482,8 +486,9 @@ class ADB():
             cmd += "-r "
         if sdcard is True:
             cmd += "-s "
-        
-        self.run_cmd([cmd,pkgapp])
+ 
+        cmd += pkgapp
+        self.run_cmd(cmd.split())
         return self.__output
 
     def find_binary(self,name=None):
