@@ -6,6 +6,7 @@
 try:
     import sys
     import os
+    import re
     import subprocess
 except ImportError,e:
     # should never be reached
@@ -222,21 +223,25 @@ class ADB():
         self.run_cmd('help')
         return self.__output
 
-    def get_devices(self):
+    def get_devices(self, mode="serial"):
         """
         Returns a list of connected devices
         adb devices
+        mode serial/usb
         """
         error = 0
-        self.run_cmd("devices")        
+        self.run_cmd(["devices", "-l"] if mode == "usb" else "devices")
         if self.__error is not None:
             return ''
         try:
-            self.__devices = self.__output.partition('\n')[2].replace('device','').split()
+            if mode == 'serial':
+                self.__devices = self.__output.partition('\n')[2].replace('device','').split()
+            elif mode == 'usb':
+                self.__devices = re.sub('.+usb:|\sproduct.+|\n\n', '', self.__output.partition('\n')[2]).split()
             
             if self.__devices[1:] == ['no','permissions']:
                 error = 2
-                self.__devices = None                
+                self.__devices = None
         except:
             self.__devices = None
             error = 1
