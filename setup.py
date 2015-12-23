@@ -14,7 +14,7 @@ setup(
     keywords = "python android adb",
     url = "https://github.com/sch3m4/pyadb",
     packages=['pyadb'],
-    long_description=read('README'),
+    long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Alpha",
         "Topic :: Utilities",
