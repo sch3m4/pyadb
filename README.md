@@ -1,7 +1,6 @@
 Simple python module to interact with the ADB tool
 
 #### How to install:
-===============
 
 Currently there is no Debian package available for PyADB. (Will be fixed soon...)
 
@@ -48,7 +47,6 @@ Currently there is no Debian package available for PyADB. (Will be fixed soon...
 More instructions: http://wiki.python.org/moin/CheeseShopTutorial
 
 #### Usage:
-======
 
     $ python
     Python 2.7.6 (default, Mar 22 2014, 22:59:56) 
