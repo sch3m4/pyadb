@@ -1,6 +1,6 @@
 Simple python module to interact with the ADB tool
 
-#### How to install:
+### How to install:
 
 Currently there is no Debian package available for PyADB. (Will be fixed soon...)
 
