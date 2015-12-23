@@ -1,3 +1,5 @@
+![build_travis](https://travis-ci.org/sch3m4/pyadb.svg?branch=master)
+
 Simple python module to interact with the ADB tool
 
 ### How to install:
