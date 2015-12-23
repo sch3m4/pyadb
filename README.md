@@ -34,6 +34,7 @@ Currently there is no Debian package available for PyADB. (Will be fixed soon...
     copying pyadb/__init__.py -> build/lib.linux-i686-2.7/pyadb
 
 
+
     $ sudo python setup.py install
     running install
     running build
