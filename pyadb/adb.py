@@ -54,7 +54,7 @@ class ADB():
     def __build_command__(self,cmd):
         ret = None
 
-        if self.__devices is not None and len(self.__devices) > 1 and self.__target is None:
+        if self.__devices is not None and len(self.__devices) > 1 and self.__target is None and "devices" not in cmd:
             self.__error = "Must set target device first"
             self.__return = 1
             return ret
