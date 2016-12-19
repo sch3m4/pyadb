@@ -237,7 +237,7 @@ class ADB():
             if mode == 'serial':
                 self.__devices = self.__output.partition('\n')[2].replace('device','').split()
             elif mode == 'usb':
-                self.__devices = re.sub('.+usb:|\sproduct.+|\n\n', '', self.__output.partition('\n')[2]).split()
+                self.__devices = re.sub('.+device |\sproduct.+|\n\n', '', self.__output.partition('\n')[2]).split()
             
             if self.__devices[1:] == ['no','permissions']:
                 error = 2
