@@ -8,9 +8,9 @@ try:
     import os
     import re
     import subprocess
-except ImportError,e:
+except ImportError as e:
     # should never be reached
-    print "[f] Required module missing. %s" % e.args[0]
+    print ("[f] Required module missing. %s" % e.args[0])
     sys.exit(-1)
 
 class ADB():
@@ -125,9 +125,13 @@ class ADB():
                                   stderr = subprocess.PIPE, shell = False)
             (self.__output, self.__error) = adb_proc.communicate()
             self.__return = adb_proc.returncode
+            self.__output = self.__output.decode('utf-8')
+            self.__error = self.__error.decode('utf-8')
 
             if( len(self.__output) == 0 ):
                 self.__output = None
+            else:
+                self.__output = [ x.strip() for x in self.__output.split('\n') if len(x.strip()) > 0 ]
 
             if( len(self.__error) == 0 ):
                 self.__error = None
@@ -135,7 +139,7 @@ class ADB():
         except:
             pass
 
-        return
+        return (self.__error,self.__output)
 
     def get_version(self):
         """
@@ -144,7 +148,7 @@ class ADB():
         """
         self.run_cmd("version")
         try:
-            ret = self.__output.split()[-1:][0]
+            ret = self.__output[0].split()[-1:][0]
         except:
             ret = None
         return ret
@@ -223,28 +227,22 @@ class ADB():
         self.run_cmd('help')
         return self.__output
 
-    def get_devices(self, mode="serial"):
+    def get_devices(self):
         """
         Returns a list of connected devices
         adb devices
         mode serial/usb
         """
         error = 0
-        self.run_cmd(["devices", "-l"] if mode == "usb" else "devices")
+        self.__devices = None
+        self.run_cmd("devices")
         if self.__error is not None:
-            return ''
+            return (1,self.__devices)
         try:
-            if mode == 'serial':
-                self.__devices = self.__output.partition('\n')[2].replace('device','').split()
-            elif mode == 'usb':
-                self.__devices = re.sub('.+device |\sproduct.+|\n\n', '', self.__output.partition('\n')[2]).split()
-            
-            if self.__devices[1:] == ['no','permissions']:
-                error = 2
-                self.__devices = None
-        except:
+            self.__devices = [x.split()[0] for x in self.__output[1:]]
+        except Exception as e:
             self.__devices = None
-            error = 1
+            error = 2
 
         return (error,self.__devices)
 
@@ -344,7 +342,7 @@ class ADB():
         adb shell <cmd>
         """
         self.__clean__()
-        self.run_cmd(['shell',cmd])
+        self.run_cmd(['shell' , cmd])
         return self.__output
 
     def listen_usb(self):
@@ -501,14 +499,12 @@ class ADB():
         Look for a binary file on the device
         """
         
-        self.shell_command(['which',name])
+        self.run_cmd(['shell','which',name])
         
         if self.__output is None: # not found
             self.__error = "'%s' was not found" % name
-        elif self.__output.strip() == "which: not found": # 'which' binary not available
+        elif self.__output[0] == "which: not found": # 'which' binary not available
             self.__output = None
             self.__error = "which binary not found"
-        else:
-            self.__output = self.__output.strip()
 
         return self.__output
