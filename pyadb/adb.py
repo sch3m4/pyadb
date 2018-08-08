@@ -14,7 +14,7 @@ except ImportError as e:
     sys.exit(-1)
 
 class ADB():
-    PYADB_VERSION = "0.1.4"
+    PYADB_VERSION = "0.1.5"
     
     __adb_path = None
     __output = None
