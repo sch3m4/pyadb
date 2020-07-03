@@ -11,6 +11,7 @@ except ImportError as e:
     print(("[f] Required module missing. %s" % e.args[0]))
     sys.exit(-1)
 
+
 def main():
     # creates the ADB object
     adb = ADB()
@@ -18,12 +19,13 @@ def main():
     if adb.set_adb_path('/usr/bin/adb') is True:
         print(("Version: %s" % adb.get_version()))
     else:
-        print ("Check ADB binary path")
+        print("Check ADB binary path")
 
     apps = adb.shell_command("pm list packages")
     for app in apps:
         path = adb.shell_command("pm path {}".format(app.split(':')[1]))
-        print(("{}: {}".format(app,path)))
+        print(("{}: {}".format(app, path)))
+
 
 if __name__ == "__main__":
     main()
