@@ -3,8 +3,8 @@
 # Very basic PyADB example
 #
 
+import sys
 try:
-    import sys
     from pyadb import ADB
 except ImportError as e:
     # should never be reached
@@ -15,12 +15,14 @@ except ImportError as e:
 def main():
     # creates the ADB object
     adb = ADB()
-    # IMPORTANT: You should supply the absolute path to ADB binary 
-    if adb.set_adb_path(
-            '/home/chema/.android-sdks/platform-tools/adb') is True:
-        print("Version: %s" % adb.get_version())
-    else:
-        print("Check ADB binary path")
+
+    # set ADB path, using a couple of popular addresses.
+    try:
+        adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
+    except FileNotFoundError:
+        adb.set_adb_path(r'C:\Android\android-sdk\platform-tools\adb.exe')
+
+    print("Version: %s" % adb.get_version())
 
     print("Waiting for device...")
     adb.wait_for_device()
@@ -36,7 +38,7 @@ def main():
     print("Executing 'ls' command")
     adb.shell_command('ls')
 
-    print("Output:\n%s" % adb.get_output())
+    print("Output:\n  %s" % "\n  ".join(adb.get_output()))
 
 
 if __name__ == "__main__":
