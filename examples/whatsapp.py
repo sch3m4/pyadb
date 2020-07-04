@@ -193,7 +193,6 @@ def get_destination_path():
         if e.errno == errno.EEXIST:
             pass
         else:
-            raise
             print("\t- ERROR!: ", e.args)
             return None
 
@@ -291,7 +290,8 @@ def main():
         print("[+] Detecting devices...", end=' ')
         try:
             devices = adb.get_devices()
-        except adb.PermissionError:
+        except adb.PermissionsError:
+            devices = None
             print("You haven't enough permissions!")
             exit(-3)
 
@@ -328,8 +328,7 @@ def main():
     try:
         adb.set_target_device(devices[dev])
     except Exception as e:
-        print("\n[!] Error:\t- ADB: %s\t - Python: %s" % (
-            adb.get_error(), e.args))
+        print("\n[!] Error: " % e)
         exit(-5)
 
     print("\n[+] Using \"%s\" as target device" % devices[dev])
@@ -340,11 +339,10 @@ def main():
     try:
         supath = adb.find_binary("su")
     except ADB.AdbException as err:
-        if str(err) == "'su' was not found":
-            supath = None
-        else:
+        if str(err) != "'su' was not found":
             print("Error: %s" % err)
             exit(-6)
+        supath = None
 
     if supath is not None:
         # 'su' binary has been found
@@ -359,7 +357,7 @@ def main():
             else:
                 print("\t- No: %s" % rootid)
                 get_whatsapp_nonroot(adb)
-        except ADBException as err:
+        except adb.AdbException as err:
             print("\t- No: %s" % err)
             get_whatsapp_nonroot(adb)
     else:
