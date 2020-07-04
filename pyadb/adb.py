@@ -45,12 +45,12 @@ class ADB:
         return self.PYADB_VERSION
 
     def __init__(self, adb_path=None):
-        if self._adb_path and self._adp_path != adb_path:
-            raise self.BadCall(
-                    "Only one adp path can be set for all instances. "
-                    "Use set_adp_path to change for all instance.")
-
-        ADB._adb_path = adb_path
+        if adb_path:
+            if self._adb_path and self._adb_path != adb_path:
+                raise self.BadCall(
+                        "Only one adp path can be set for all instances. "
+                        "Use set_adp_path to change for all instance.")
+            ADB._adb_path = adb_path
         self._target = None
 
     def _parse_output(self, outstr):
@@ -80,12 +80,12 @@ class ADB:
     def _check_target(cls, cmd, target):
         if target is None and all(
                 safe_commands not in cmd for safe_commands
-                in cls.COMMANDS_WITHOUT_TARGETS) :
+                in cls.COMMANDS_WITHOUT_TARGETS):
             raise cls.BadCall("Must set target device first")
 
     @classmethod
     def _build_command_c(cls, cmd, target=None):
-        # The class version can be called from a classmethod.
+        # The _c version can be called from a classmethod.
         cls._check_target(cmd, target)
 
         # Modified function to directly return command set for Popen
@@ -242,7 +242,7 @@ class ADB:
         Returns ADB help
         adb help
         """
-        return cls._output_if_no_error(cls.run_cmd('help'))
+        return cls._output_if_no_error(cls.run_cmd_c('help'))
 
     @classmethod
     def get_devices(cls):
@@ -258,7 +258,7 @@ class ADB:
 
         except Exception as err:
             # ToDo: Limit this except-clause to the specific exception.
-            self.LOGGER.exception(
+            cls.LOGGER.exception(
                     "Exception being translated to PermissionsError")
             raise cls.PermissionsError(str(err))
         return cls._devices
