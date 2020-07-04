@@ -107,7 +107,8 @@ def get_whatsapp_root(adb, supath):
 
 def get_sdcard_iter(adb, rpath=None, lpath=None):
     """
-    When 'tar' binary is not available, this method get the whole content of the remote WhastApp directory from the sdcard
+    When 'tar' binary is not available, this method get the whole content of
+    the remote WhatsApp directory from the sdcard
     """
 
     if lpath is None:
@@ -250,11 +251,14 @@ def get_whatsapp_nonroot(adb):
 
 
 def main():
-    logging.basicConfig()
+    logging.basicConfig(level=logging.WARNING)
     adb = ADB()
 
-    # set ADB path
-    adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
+    # set ADB path, using a couple of popular addresses.
+    try:
+        adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
+    except FileNotFoundError:
+        adb.set_adb_path(r'C:\Android\android-sdk\platform-tools\adb.exe')
 
     print("[+] Using PyADB version %s" % adb.pyadb_version())
 
@@ -333,6 +337,7 @@ def main():
         print("%s" % supath)
     else:
         print("Error: %s" % adb.get_error())
+        exit(-6)
 
     # 'su' binary has been found
     if supath is not None:
