@@ -19,14 +19,15 @@ def main():
     # set ADB path, using a couple of popular addresses.
     try:
         adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
-    except FileNotFoundError:
+    except ADB.BadCall:
         adb.set_adb_path(r'C:\Android\android-sdk\platform-tools\adb.exe')
 
     print("Version: %s" % adb.get_version())
 
     print("Waiting for device...")
     adb.wait_for_device()
-    err, dev = adb.get_devices()
+
+    dev = adb.get_devices()
 
     if len(dev) == 0:
         print("Unexpected error, may be you're a very fast guy?")
@@ -36,10 +37,12 @@ def main():
     adb.set_target_device(dev[0])
 
     print("Executing 'ls' command")
-    adb.shell_command('ls')
+    output, error = adb.shell_command('ls')
 
-    print("Output:\n  %s" % "\n  ".join(adb.get_output()))
-
+    if output:
+        print("Output:\n  %s" % "\n  ".join(output))
+    if error:
+        print("Error:\n  %s" % error)
 
 if __name__ == "__main__":
     main()

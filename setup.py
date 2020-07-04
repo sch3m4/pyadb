@@ -8,7 +8,7 @@ def read(fname):
 
 setup(
         name="pyadb",
-        version="0.1.5jo",
+        version="2.0.0jo",
         author="Chema Garcia",
         author_email="chema@safetybits.net",
         description=(

@@ -44,15 +44,16 @@ databases from the selected device.
 ~/pyadb/example$
 """
 
+import errno
+import logging
+import random
+import string
+from os import getcwd
+from os import mkdir
+from os.path import basename
+from sys import stdin, exit
+
 try:
-    import logging
-    import random
-    import string
-    import errno
-    from os import getcwd
-    from sys import stdin, exit
-    from os.path import basename
-    from os import mkdir
     from pyadb import ADB
 except ImportError as e:
     print("[f] Required module missing. %s" % e.args[0])
@@ -78,8 +79,6 @@ def get_whatsapp_root(adb, supath):
             pass
         else:
             return False, e.args
-    except Exception as e:
-        return False, str(e)
 
     tarname = '/sdcard/whatsapp_' + ''.join(
             random.choice(string.ascii_letters) for _ in range(10)) + '.tar'
@@ -109,6 +108,8 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
     """
     When 'tar' binary is not available, this method get the whole content of
     the remote WhatsApp directory from the sdcard
+
+    This does NOT return an iter object, despite its name.
     """
 
     if lpath is None:
@@ -127,24 +128,24 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
 
     try:
         res = res.split('\n')
-    except Exception:
+    except AttributeError:
         return False, "Directory empty"
 
     for item in res:
 
-        try:
-            item = item.strip()
-            if item == "":
-                continue
-        except Exception:
+        if item is None:
+            continue
+        item = item.strip()
+        if item == "":
             continue
 
-        ftype = adb.shell_command("ls -ld \"%s\"" % (rdir + item))[:1]
+        ftype, _ = adb.shell_command("ls -ld \"%s\"" % (rdir + item))[:1]
         # if it is a directory
         if ftype == "d":
             try:
                 mkdir(lpath + item)
             except Exception:
+                # ToDo: Limit scope of this except-clause.
                 pass
             get_sdcard_iter(adb, rdir + item + '/', lpath + item + '/')
         else:  # item is a file
@@ -164,9 +165,10 @@ def create_sdcard_tar(adb, tarpath):
     print("\n[+] Creating remote tar file: %s" % tarname)
     cmd = "%s -c /sdcard/WhatsApp -f %s" % (tarpath, tarname)
     print("\t+ Command: %s" % cmd)
-    adb.shell_command(cmd).strip()
-    res = adb.shell_command("ls %s" % tarname).strip()
-    if res == "ls: %s: No such file or directory" % tarname:
+    output, error = adb.shell_command(cmd)
+    # Ignore error!
+    output, error = adb.shell_command("ls %s" % tarname)
+    if error.startswith("ls: %s: No such file or directory" % tarname):
         return None
     else:
         return tarname
@@ -191,11 +193,9 @@ def get_destination_path():
         if e.errno == errno.EEXIST:
             pass
         else:
+            raise
             print("\t- ERROR!: ", e.args)
             return None
-    except Exception as e:
-        print("\t- ERROR!: ", str(e))
-        return None
 
     return destination
 
@@ -207,43 +207,47 @@ def get_whatsapp_nonroot(adb):
 
     # look for 'tar' binary
     print("[+] Looking for 'tar' binary...", end=' ')
-    tarpath = adb.find_binary("tar")
 
-    if tarpath is None:
-        print("Error: %s" % adb.get_error())
-    else:
+    try:
+        tarpath = adb.find_binary("tar")
         print("%s" % tarpath)
+    except ADB.AdbException as err:
+        print("Error: %s" % err)
+        tarpath = None
 
     if tarpath is not None:
         wapath = create_sdcard_tar(adb, tarpath)
-        print("\n[+] Remote tar file created: %s" % wapath)
-        destination = get_destination_path()
-        if destination is not None:
-            print("\n[+] Retrieving remote file: %s..." % wapath)
-            adb.get_remote_file(wapath, destination + basename(wapath))
-            adb.shell_command("rm %s" % wapath)
-            print(
-                    "\n[+] WhatsApp SDcard folder is now available "
-                    "in tar file: %s\n" % (
-                            destination + basename(wapath)))
-            return
-        else:
-            adb.shell_command("rm %s" % wapath)
+
+        if wapath is not None:
+            print("\n[+] Remote tar file created: %s" % wapath)
+            destination = get_destination_path()
+            if destination is not None:
+                print("\n[+] Retrieving remote file: %s..." % wapath)
+                adb.get_remote_file(wapath, destination + basename(wapath))
+                adb.shell_command("rm %s" % wapath)
+                print(
+                        "\n[+] WhatsApp SDcard folder is now available "
+                        "in tar file: %s\n" % (
+                                destination + basename(wapath)))
+                return
+            else:
+                adb.shell_command("rm %s" % wapath)
 
     # get the remote WhatsApp folder from the SDcard (the iterative way)
     path = get_destination_path()
     if path is None:
         print(
                 "\n[!] Error while retrieving remote WhatsApp SDcard "
-                "folder: Used has provided an invalid path")
+                "folder: User has provided an invalid path")
         return
 
     print("\n[+] Retrieving remote WhatsApp SDcard folder...")
-    ret, error = get_sdcard_iter(adb, None, path)
-    if ret:
-        print("\n[+] Remote WhatsApp SDcard folder is now available"
+
+    try:
+        ret = get_sdcard_iter(adb, None, path)
+        print("\n[+] Remote WhatsApp SDcard folder is now available "
               "at: %s" % path)
-    else:
+    except ADB.AdbException as error:
         print("\n[!] Error while retrieving remote WhatsApp"
               "SDcard folder: %s" % error)
 
@@ -257,7 +261,7 @@ def main():
     # set ADB path, using a couple of popular addresses.
     try:
         adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
-    except FileNotFoundError:
+    except ADB.BadCall:
         adb.set_adb_path(r'C:\Android\android-sdk\platform-tools\adb.exe')
 
     print("[+] Using PyADB version %s" % adb.pyadb_version())
@@ -276,28 +280,29 @@ def main():
 
     # restart server (may be other instances running)
     print("[+] Restarting ADB server...")
-    adb.restart_server()
-    if adb.lastFailed():
-        print("\t- ERROR\n")
+    try:
+        adb.restart_server()
+    except Exception as err:
+        print("\t- ERROR\n", err)
         exit(-3)
 
     # get detected devices
     while True:
         print("[+] Detecting devices...", end=' ')
-        error, devices = adb.get_devices()
-
-        if error == 1:
-            # no devices connected
-            print("No devices connected")
-            print("[+] Waiting for devices...")
-            adb.wait_for_device()
-            continue
-        elif error == 2:
+        try:
+            devices = adb.get_devices()
+        except adb.PermissionError:
             print("You haven't enough permissions!")
             exit(-3)
 
-        print("OK")
-        break
+        if devices:
+            print("OK")
+            break
+
+        # no devices connected
+        print("No devices connected")
+        print("[+] Waiting for devices...")
+        adb.wait_for_device()
 
     # this should never be reached
     if len(devices) == 0:
@@ -331,27 +336,34 @@ def main():
 
     # check if 'su' binary is available
     print("[+] Looking for 'su' binary: ", end=' ')
-    supath = adb.find_binary("su")
+
+    try:
+        supath = adb.find_binary("su")
+    except ADB.AdbException as err:
+        if str(err) == "'su' was not found":
+            supath = None
+        else:
+            print("Error: %s" % err)
+            exit(-6)
 
     if supath is not None:
-        print("%s" % supath)
-    else:
-        print("Error: %s" % adb.get_error())
-        exit(-6)
+        # 'su' binary has been found
 
-    # 'su' binary has been found
-    if supath is not None:
         print("[+] Checking if 'su' binary can give root access:")
-        rootid = adb.shell_command('%s -c id' % supath)
-        if adb.lastFailed() is False and 'root' in rootid.replace('(',
-                                                                  ')').split(
-                ')'):  # it can provide root privileges
-            print("\t- Yes")
-            get_whatsapp_root(adb, supath)
-        else:  # only have normal-user
-            print("\t- No: %s" % adb.get_error())
+        try:
+            rootid = adb.shell_command('%s -c id' % supath)
+            if 'root' in rootid.replace('(', ')').split(')'):
+                # it can provide root privileges
+                print("\t- Yes")
+                get_whatsapp_root(adb, supath)
+            else:
+                print("\t- No: %s" % rootid)
+                get_whatsapp_nonroot(adb)
+        except ADBException as err:
+            print("\t- No: %s" % err)
             get_whatsapp_nonroot(adb)
     else:
+        print("Not found.")
         get_whatsapp_nonroot(adb)
 
     exit(0)

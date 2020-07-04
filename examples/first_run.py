@@ -18,12 +18,12 @@ def main():
     # set ADB path, using a couple of popular addresses.
     try:
         adb.set_adb_path('~/android-sdk-linux/platform-tools/adb')
-    except FileNotFoundError:
+    except ADB.BadCall:
         adb.set_adb_path(r'C:\Android\android-sdk\platform-tools\adb.exe')
 
-    apps = adb.shell_command("pm list packages")
+    apps, error = adb.shell_command("pm list packages")
     for app in apps:
-        path = adb.shell_command("pm path {}".format(app.split(':')[1]))
+        path, error = adb.shell_command("pm path {}".format(app.split(':')[1]))
         print(("{}: {}".format(app, path)))
 
 
