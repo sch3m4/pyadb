@@ -126,7 +126,7 @@ class ADB:
         # For compat of windows
         cmd_list = self.__build_command__(cmd)
 
-        self.LOGGER.info("Executing command: %s", " ".join(cmd_list))
+        self.LOGGER.info("Executing command: %s", cmd_list)
 
         try:
             adb_proc = subprocess.Popen(
