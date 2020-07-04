@@ -3,6 +3,8 @@
 # Homepage: http://safetybits.net
 # Project Site: http://github.com/sch3m4/pyadb
 
+
+import logging
 import os
 import subprocess
 import sys
@@ -144,8 +146,9 @@ class ADB:
                 self.__error = None
 
         except Exception:
-            # ToDo: Better processing of exceptions.
-            pass
+            logging.getLogger("pyadb").exception()
+            self.__error = "Unexpected exception"
+            self.__return = 1
 
         return self.__error, self.__output
 
@@ -155,11 +158,16 @@ class ADB:
         adb version
         """
         self.run_cmd("version")
+        if self.__output is None or len(self.__output) < 1:
+            logging.getLogger("pyadb").warning("No version found.")
+            return None
+
         try:
             ret = self.__output[0].split()[-1:][0]
-        except Exception:
-            # ToDo: Better processing of exceptions.
+        except:
+            logging.getLogger("pyadb").exception("Unexpected exception")
             ret = None
+
         return ret
 
     def check_path(self):
@@ -250,6 +258,7 @@ class ADB:
         try:
             self.__devices = [x.split()[0] for x in self.__output[1:]]
         except Exception:
+            logging.getLogger("pyadb").exception("Unexpected exception")
             self.__devices = None
             error = 2
 

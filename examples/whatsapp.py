@@ -45,6 +45,7 @@ databases from the selected device.
 """
 
 try:
+    import logging
     import random
     import string
     import errno
@@ -249,6 +250,7 @@ def get_whatsapp_nonroot(adb):
 
 
 def main():
+    logging.basicConfig()
     adb = ADB()
 
     # set ADB path
