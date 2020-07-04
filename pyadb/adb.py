@@ -3,15 +3,9 @@
 # Homepage: http://safetybits.net
 # Project Site: http://github.com/sch3m4/pyadb
 
-try:
-    import sys
-    import os
-    import re
-    import subprocess
-except ImportError as e:
-    # should never be reached
-    print(("[f] Required module missing. %s" % e.args[0]))
-    sys.exit(-1)
+import os
+import subprocess
+import sys
 
 
 class ADB:
@@ -309,9 +303,9 @@ class ADB:
             return self.__output
         self.run_cmd(
                 ["reboot",
-                    "%s" % "recovery"
-                    if mode == self.REBOOT_RECOVERY
-                    else "bootloader"])
+                 "%s" % "recovery"
+                 if mode == self.REBOOT_RECOVERY
+                 else "bootloader"])
         return self.__output
 
     def set_adb_root(self):
