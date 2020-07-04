@@ -14,7 +14,7 @@ except ImportError as e:
     sys.exit(-1)
 
 
-class ADB():
+class ADB:
     PYADB_VERSION = "0.1.5jo"
 
     __adb_path = None
@@ -47,7 +47,7 @@ class ADB():
     def __parse_output__(self, outstr):
         ret = None
 
-        if (len(outstr) > 0):
+        if len(outstr) > 0:
             ret = outstr.splitlines()
 
         return ret
@@ -55,34 +55,38 @@ class ADB():
     def __build_command__(self, cmd):
         ret = None
 
-        if self.__devices is not None and len(
-                self.__devices) > 1 and self.__target is None and "devices" not in cmd:
+        if (self.__devices is not None and
+                len(self.__devices) > 1 and
+                self.__target is None and
+                "devices" not in cmd):
             self.__error = "Must set target device first"
             self.__return = 1
             return ret
 
         # Modified function to directly return command set for Popen
         #
-        # Unfortunately, there is something odd going on and the argument list is not being properly
-        # converted to a string on the windows 7 test systems.  To accomodate, this block explitely
-        # detects windows vs. non-windows and builds the OS dependent command output
+        # Unfortunately, there is something odd going on and the argument
+        # list is not being properly converted to a string on the windows 7
+        # test systems.  To accomodate, this block explitely detects windows
+        # vs. non-windows and builds the OS dependent command output
         #
-        # Command in 'list' format: Thanks to Gil Rozenberg for reporting the issue
+        # Command in 'list' format: Thanks to Gil Rozenberg for reporting
+        # the issue
         #
         if sys.platform.startswith('win'):
             ret = self.__adb_path + " "
-            if (self.__target is not None):
+            if self.__target is not None:
                 ret += "-s " + self.__target + " "
-            if type(cmd) == type([]):
+            if isinstance(cmd, list):
                 ret += ' '.join(cmd)
             else:
                 ret += cmd
         else:
             ret = [self.__adb_path]
-            if (self.__target is not None):
+            if self.__target is not None:
                 ret += ["-s", self.__target]
 
-            if type(cmd) == type([]):
+            if isinstance(cmd, list):
                 for i in cmd:
                     ret.append(i)
             else:
@@ -103,7 +107,10 @@ class ADB():
         """
         Did the last command fail?
         """
-        if self.__output is None and self.__error is not None and self.__return:
+        if (
+                self.__output is None and
+                self.__error is not None and
+                self.__return):
             return True
         return False
 
@@ -122,27 +129,31 @@ class ADB():
         cmd_list = self.__build_command__(cmd)
 
         try:
-            adb_proc = subprocess.Popen(cmd_list, stdin=subprocess.PIPE, \
-                                        stdout=subprocess.PIPE, \
-                                        stderr=subprocess.PIPE, shell=False)
+            adb_proc = subprocess.Popen(
+                    cmd_list,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=False)
             (self.__output, self.__error) = adb_proc.communicate()
             self.__return = adb_proc.returncode
             self.__output = self.__output.decode('utf-8')
             self.__error = self.__error.decode('utf-8')
 
-            if (len(self.__output) == 0):
+            if len(self.__output) == 0:
                 self.__output = None
             else:
                 self.__output = [x.strip() for x in self.__output.split('\n')
                                  if len(x.strip()) > 0]
 
-            if (len(self.__error) == 0):
+            if len(self.__error) == 0:
                 self.__error = None
 
-        except:
+        except Exception:
+            # ToDo: Better processing of exceptions.
             pass
 
-        return (self.__error, self.__output)
+        return self.__error, self.__output
 
     def get_version(self):
         """
@@ -152,7 +163,8 @@ class ADB():
         self.run_cmd("version")
         try:
             ret = self.__output[0].split()[-1:][0]
-        except:
+        except Exception:
+            # ToDo: Better processing of exceptions.
             ret = None
         return ret
 
@@ -240,21 +252,21 @@ class ADB():
         self.__devices = None
         self.run_cmd("devices")
         if self.__error is not None:
-            return (1, self.__devices)
+            return 1, self.__devices
         try:
             self.__devices = [x.split()[0] for x in self.__output[1:]]
-        except Exception as e:
+        except Exception:
             self.__devices = None
             error = 2
 
-        return (error, self.__devices)
+        return error, self.__devices
 
     def set_target_device(self, device):
         """
         Select the device to work with
         """
         self.__clean__()
-        if device is None or not device in self.__devices:
+        if device is None or device not in self.__devices:
             self.__error = 'Must get device list first'
             self.__return = 1
             return False
@@ -291,12 +303,15 @@ class ADB():
         adb reboot recovery/bootloader
         """
         self.__clean__()
-        if not mode in (self.REBOOT_RECOVERY, self.REBOOT_BOOTLOADER):
+        if mode not in (self.REBOOT_RECOVERY, self.REBOOT_BOOTLOADER):
             self.__error = "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER"
             self.__return = 1
             return self.__output
-        self.run_cmd(["reboot",
-                      "%s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader"])
+        self.run_cmd(
+                ["reboot",
+                    "%s" % "recovery"
+                    if mode == self.REBOOT_RECOVERY
+                    else "bootloader"])
         return self.__output
 
     def set_adb_root(self):
@@ -369,8 +384,8 @@ class ADB():
 
     def get_bugreport(self):
         """
-        Return all information from the device that should be included in a bug report
-        adb bugreport
+        Return all information from the device that should be included in a
+        bug report adb bugreport
         """
         self.__clean__()
         self.run_cmd("bugreport")
@@ -507,7 +522,7 @@ class ADB():
 
         if self.__output is None:  # not found
             self.__error = "'%s' was not found" % name
-        elif self.__output[
-            0] == "which: not found":  # 'which' binary not available
+        elif self.__output[0] == "which: not found":
+            # 'which' binary not available
             self.__output = None
             self.__error = "which binary not found"

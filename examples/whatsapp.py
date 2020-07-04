@@ -76,12 +76,12 @@ def get_whatsapp_root(adb, supath):
         if e.errno == errno.EEXIST:
             pass
         else:
-            return (False, e.args)
+            return False, e.args
     except Exception as e:
-        return (False, e.msg)
+        return False, str(e)
 
     tarname = '/sdcard/whatsapp_' + ''.join(
-            random.choice(string.letters) for i in range(10)) + '.tar'
+            random.choice(string.ascii_letters) for _ in range(10)) + '.tar'
     print("\n[+] Creating remote tar file: %s" % tarname)
 
     cmd = "%s -c 'tar -c /data/data/com.whatsapp -f %s'" % (supath, tarname)
@@ -96,11 +96,12 @@ def get_whatsapp_root(adb, supath):
     adb.shell_command(cmd)
 
     print(
-        "\n[+] Remote Whatsapp files from device memory are now locally accessible at \"%s%s\"\n" % (
-        destination, basename(tarname)))
+            "\n[+] Remote Whatsapp files from device memory are now "
+            "locally accessible at \"%s%s\"\n" % (
+                destination, basename(tarname)))
 
     get_whatsapp_nonroot(adb)
-    return (True, "")
+    return True, ""
 
 
 def get_sdcard_iter(adb, rpath=None, lpath=None):
@@ -109,7 +110,7 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
     """
 
     if lpath is None:
-        return (False, "Local path not provided")
+        return False, "Local path not provided"
 
     maindir = "/sdcard/WhatsApp/"
 
@@ -120,12 +121,12 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
 
     res = adb.shell_command("ls -1 \"%s\"" % rdir)
     if res == "ls: %s: No such file or directory" % rdir:
-        return (False, "WhatsApp directory does not exists!")
+        return False, "WhatsApp directory does not exists!"
 
     try:
         res = res.split('\n')
-    except:
-        return (False, "Directory empty")
+    except Exception:
+        return False, "Directory empty"
 
     for item in res:
 
@@ -133,7 +134,7 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
             item = item.strip()
             if item == "":
                 continue
-        except:
+        except Exception:
             continue
 
         ftype = adb.shell_command("ls -ld \"%s\"" % (rdir + item))[:1]
@@ -141,22 +142,23 @@ def get_sdcard_iter(adb, rpath=None, lpath=None):
         if ftype == "d":
             try:
                 mkdir(lpath + item)
-            except Exception as e:
+            except Exception:
                 pass
             get_sdcard_iter(adb, rdir + item + '/', lpath + item + '/')
         else:  # item is a file
             print("\t- Retrieving remote file: %s" % (rdir + item))
             adb.get_remote_file(rdir + item, lpath + item)
 
-    return (True, "")
+    return True, ""
 
 
 def create_sdcard_tar(adb, tarpath):
     """
-    Returns the remote path of the tar file containing the whole WhatsApp directory from the SDcard
+    Returns the remote path of the tar file containing the whole WhatsApp
+    directory from the SDcard
     """
     tarname = '/sdcard/whatsapp_' + ''.join(
-            random.choice(string.letters) for i in range(10)) + '.tar'
+            random.choice(string.ascii_letters) for _ in range(10)) + '.tar'
     print("\n[+] Creating remote tar file: %s" % tarname)
     cmd = "%s -c /sdcard/WhatsApp -f %s" % (tarpath, tarname)
     print("\t+ Command: %s" % cmd)
@@ -190,7 +192,7 @@ def get_destination_path():
             print("\t- ERROR!: ", e.args)
             return None
     except Exception as e:
-        print("\t- ERROR!: ", e.mgs)
+        print("\t- ERROR!: ", str(e))
         return None
 
     return destination
@@ -219,7 +221,8 @@ def get_whatsapp_nonroot(adb):
             adb.get_remote_file(wapath, destination + basename(wapath))
             adb.shell_command("rm %s" % wapath)
             print(
-                "\n[+] WhatsApp SDcard folder is now available in tar file: %s\n" % (
+                    "\n[+] WhatsApp SDcard folder is now available "
+                    "in tar file: %s\n" % (
                             destination + basename(wapath)))
             return
         else:
@@ -229,17 +232,19 @@ def get_whatsapp_nonroot(adb):
     path = get_destination_path()
     if path is None:
         print(
-            "\n[!] Error while retrieving remote WhatsApp SDcard folder: Used has provided an invalid path")
+                "\n[!] Error while retrieving remote WhatsApp SDcard "
+                "folder: Used has provided an invalid path")
         return
 
     print("\n[+] Retrieving remote WhatsApp SDcard folder...")
     ret, error = get_sdcard_iter(adb, None, path)
     if ret is True:
-        print(
-            "\n[+] Remote WhatsApp SDcard folder is now available at: %s" % path)
+        print("\n[+] Remote WhatsApp SDcard folder is now available at: %s" %
+              path)
     else:
         print(
-            "\n[!] Error while retrieving remote WhastsApp SDcard folder: %s" % error)
+            "\n[!] Error while retrieving remote WhastsApp SDcard folder: %s" %
+            error)
 
     return
 
@@ -272,8 +277,7 @@ def main():
         exit(-3)
 
     # get detected devices
-    dev = 0
-    while dev is 0:
+    while True:
         print("[+] Detecting devices...", end=' ')
         error, devices = adb.get_devices()
 
@@ -284,11 +288,11 @@ def main():
             adb.wait_for_device()
             continue
         elif error is 2:
-            print("You haven't enought permissions!")
+            print("You haven't enough permissions!")
             exit(-3)
 
         print("OK")
-        dev = 1
+        break
 
     # this should never be reached
     if len(devices) == 0:
@@ -315,7 +319,7 @@ def main():
         adb.set_target_device(devices[dev])
     except Exception as e:
         print("\n[!] Error:\t- ADB: %s\t - Python: %s" % (
-        adb.get_error(), e.args))
+            adb.get_error(), e.args))
         exit(-5)
 
     print("\n[+] Using \"%s\" as target device" % devices[dev])
