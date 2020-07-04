@@ -238,13 +238,12 @@ def get_whatsapp_nonroot(adb):
 
     print("\n[+] Retrieving remote WhatsApp SDcard folder...")
     ret, error = get_sdcard_iter(adb, None, path)
-    if ret is True:
-        print("\n[+] Remote WhatsApp SDcard folder is now available at: %s" %
-              path)
+    if ret:
+        print("\n[+] Remote WhatsApp SDcard folder is now available"
+              "at: %s" % path)
     else:
-        print(
-            "\n[!] Error while retrieving remote WhastsApp SDcard folder: %s" %
-            error)
+        print("\n[!] Error while retrieving remote WhatsApp"
+              "SDcard folder: %s" % error)
 
     return
 
@@ -258,8 +257,8 @@ def main():
     print("[+] Using PyADB version %s" % adb.pyadb_version())
 
     # verity ADB path
-    print("[+] Verifying ADB path...", end=' ')
-    if adb.check_path() is False:
+    print("[+] Verifying ADB path...", end='')
+    if not adb.check_path():
         print("ERROR")
         exit(-2)
     print("OK")
@@ -281,13 +280,13 @@ def main():
         print("[+] Detecting devices...", end=' ')
         error, devices = adb.get_devices()
 
-        if error is 1:
+        if error == 1:
             # no devices connected
             print("No devices connected")
             print("[+] Waiting for devices...")
             adb.wait_for_device()
             continue
-        elif error is 2:
+        elif error == 2:
             print("You haven't enough permissions!")
             exit(-3)
 

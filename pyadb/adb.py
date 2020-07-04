@@ -502,11 +502,11 @@ class ADB:
             return self.__output
 
         cmd = "install "
-        if fwdlock is True:
+        if fwdlock:
             cmd += "-l "
-        if reinstall is True:
+        if reinstall:
             cmd += "-r "
-        if sdcard is True:
+        if sdcard:
             cmd += "-s "
 
         cmd += pkgapp
