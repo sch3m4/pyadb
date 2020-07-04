@@ -13,6 +13,8 @@ import sys
 class ADB:
     PYADB_VERSION = "0.1.5jo"
 
+    LOGGER = logging.getLogger("pyadb")
+
     __adb_path = None
     __output = None
     __error = None
@@ -62,9 +64,9 @@ class ADB:
         # Modified function to directly return command set for Popen
         #
         # Unfortunately, there is something odd going on and the argument
-        # list is not being properly converted to a string on the windows 7
-        # test systems.  To accomodate, this block explitely detects windows
-        # vs. non-windows and builds the OS dependent command output
+        # list is not being properly converted to a string on the Windows 7
+        # test systems.  To accommodate this, this block explicitly detects
+        # Windows vs. non-windows and builds the OS-dependent command output
         #
         # Command in 'list' format: Thanks to Gil Rozenberg for reporting
         # the issue
@@ -124,6 +126,8 @@ class ADB:
         # For compat of windows
         cmd_list = self.__build_command__(cmd)
 
+        self.LOGGER.info("Executing command: %s", " ".join(cmd_list))
+
         try:
             adb_proc = subprocess.Popen(
                     cmd_list,
@@ -146,7 +150,7 @@ class ADB:
                 self.__error = None
 
         except Exception:
-            logging.getLogger("pyadb").exception()
+            self.LOGGER.exception("Unexpected exception")
             self.__error = "Unexpected exception"
             self.__return = 1
 
@@ -159,16 +163,17 @@ class ADB:
         """
         self.run_cmd("version")
         if self.__output is None or len(self.__output) < 1:
-            logging.getLogger("pyadb").warning("No version found.")
+            self.LOGGER.warning(
+                    "No version found. Check adb is on path %s.",
+                    self.__adb_path)
             return None
 
         try:
             ret = self.__output[0].split()[-1:][0]
-        except:
-            logging.getLogger("pyadb").exception("Unexpected exception")
-            ret = None
-
-        return ret
+            return ret
+        except Exception:
+            self.LOGGER.exception("Unexpected exception")
+            return None
 
     def check_path(self):
         """
@@ -182,10 +187,9 @@ class ADB:
         """
         Sets ADB tool absolute path
         """
-        if os.path.isfile(adb_path) is False:
-            return False
+        if not os.path.isfile(adb_path):
+            raise FileNotFoundError()
         self.__adb_path = adb_path
-        return True
 
     def get_adb_path(self):
         """
@@ -258,7 +262,7 @@ class ADB:
         try:
             self.__devices = [x.split()[0] for x in self.__output[1:]]
         except Exception:
-            logging.getLogger("pyadb").exception("Unexpected exception")
+            self.LOGGER.exception("Unexpected exception")
             self.__devices = None
             error = 2
 
