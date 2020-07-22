@@ -22,7 +22,6 @@ Python module to interact with the ADB tool
     Writing /usr/local/lib/python2.7/dist-packages/pyadb-0.1.4.egg-info
     $
 
-More instructions: http://wiki.python.org/moin/CheeseShopTutorial
 
 #### Usage:
 
