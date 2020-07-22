@@ -6,23 +6,6 @@ Simple python module to interact with the ADB tool
 
 Currently there is no Debian package available for PyADB. (Will be fixed soon...)
 
-#### Debian Package:
-
-    $ sudo dpkg -i python-pyadb_0.1.1-1_all.deb 
-    Selecting previously unselected package python-pyadb.
-    (Leyendo la base de datos ... 322039 ficheros o directorios instalados actualmente.)
-    Desempaquetando python-pyadb (de python-pyadb_0.1.1-1_all.deb) ...
-    Configurando python-pyadb (0.1.1-1) ...
-    $
-
-#### Pip (Not always the latest version)
-
-    $ sudo easy_install pyadb
-    Searching for pyadb
-    ...
-    Processing dependencies for pyadb
-    Finished processing dependencies for pyadb
-    $
 
 #### From source
 
@@ -48,16 +31,15 @@ More instructions: http://wiki.python.org/moin/CheeseShopTutorial
 
 #### Usage:
 
-    $ python
-    Python 2.7.6 (default, Mar 22 2014, 22:59:56) 
-    [GCC 4.8.2] on linux2
+    ➜  pyadb git:(master) ✗ python3
+    Python 3.6.9 (default, Apr 18 2020, 01:56:04) 
+    [GCC 8.4.0] on linux
     Type "help", "copyright", "credits" or "license" for more information.
     >>> from pyadb import ADB
-    >>> adb = ADB('/home/chema/.android-sdks/platform-tools/adb')
+    >>> adb = ADB("/usr/bin/adb")
     >>> adb.pyadb_version()
-    '0.1.4'
+    '0.1.5jo'
     >>> adb.get_version()
-    '1.0.32'
-    >>> 
+    '1.0.39'
     >>> quit()
-    $
+    ➜  pyadb git:(master) ✗ 
