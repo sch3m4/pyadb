@@ -3,473 +3,461 @@
 # Homepage: http://safetybits.net
 # Project Site: http://github.com/sch3m4/pyadb
 
-try:
-    import sys
-    import os
-    import re
-    import subprocess
-except ImportError as e:
-    # should never be reached
-    print ("[f] Required module missing. %s" % e.args[0])
-    sys.exit(-1)
 
-class ADB():
-    PYADB_VERSION = "0.1.5"
-    
-    __adb_path = None
-    __output = None
-    __error = None
-    __return = 0
-    __devices = None
-    __target = None
+import logging
+import os
+import subprocess
+import sys
+
+
+class ADB:
+    PYADB_VERSION = "0.1.5jo"
+
+    LOGGER = logging.getLogger("pyadb")
+
+    _adb_path = None
+    _devices = None
 
     # reboot modes
     REBOOT_RECOVERY = 1
     REBOOT_BOOTLOADER = 2
-    
+
     # default TCP/IP port
     DEFAULT_TCP_PORT = 5555
     # default TCP/IP host
     DEFAULT_TCP_HOST = "localhost"
-    
+
+    class AdbException(Exception):
+        pass
+
+    class BadCall(AdbException):
+        """ Client called pyadb incorrectly. """
+        pass
+
+    class PermissionsError(BadCall):
+        """ Insufficient permissions (to list devices) """
+
+    class InternalError(AdbException):
+        """" Unexpected internal error in pyadb. """
+        pass
+
     def pyadb_version(self):
         return self.PYADB_VERSION
 
-    def __init__(self,adb_path=None):
-        self.__adb_path = adb_path
+    def __init__(self, adb_path=None):
+        if adb_path:
+            if self._adb_path and self._adb_path != adb_path:
+                raise self.BadCall(
+                        "Only one adp path can be set for all instances. "
+                        "Use set_adp_path to change for all instance.")
+            ADB._adb_path = adb_path
+        self._target = None
 
-    def __clean__(self):
-        self.__output = None
-        self.__error = None
-        self.__return = 0
-
-    def __parse_output__(self,outstr):
+    def _parse_output(self, outstr):
         ret = None
 
-        if(len(outstr) > 0):
+        if len(outstr) > 0:
             ret = outstr.splitlines()
 
         return ret
 
-    def __build_command__(self,cmd):
-        ret = None
+    @classmethod
+    def _output_if_no_error(cls, cmd_result):
+        output, error = cmd_result
+        if error:
+            raise cls.InternalError(error)
+        return output
 
-        if self.__devices is not None and len(self.__devices) > 1 and self.__target is None and "devices" not in cmd:
-            self.__error = "Must set target device first"
-            self.__return = 1
-            return ret
+    COMMANDS_WITHOUT_TARGETS = (
+        "devices",
+        "kill-server",
+        "start-server",
+        "version",
+        "help"
+        )
+
+    @classmethod
+    def _check_target(cls, cmd, target):
+        if target is None and all(
+                safe_commands not in cmd for safe_commands
+                in cls.COMMANDS_WITHOUT_TARGETS):
+            raise cls.BadCall("Must set target device first")
+
+    @classmethod
+    def _build_command_c(cls, cmd, target=None):
+        # The _c version can be called from a classmethod.
+        cls._check_target(cmd, target)
 
         # Modified function to directly return command set for Popen
         #
-        # Unfortunately, there is something odd going on and the argument list is not being properly
-        # converted to a string on the windows 7 test systems.  To accomodate, this block explitely
-        # detects windows vs. non-windows and builds the OS dependent command output
+        # Unfortunately, there is something odd going on and the argument
+        # list is not being properly converted to a string on the Windows 7
+        # test systems.  To accommodate this, this block explicitly detects
+        # Windows vs. non-windows and builds the OS-dependent command output
         #
-        # Command in 'list' format: Thanks to Gil Rozenberg for reporting the issue
+        # Command in 'list' format: Thanks to Gil Rozenberg for reporting
+        # the issue
         #
+        target_param_part = ["-s", target] if target else []
+        cmd_part = [cmd] if not isinstance(cmd, list) else cmd
+
+        full_cmd = [ADB._adb_path] + target_param_part + cmd_part
+
         if sys.platform.startswith('win'):
-            ret = self.__adb_path + " "
-            if( self.__target is not None ):
-                ret += "-s " + self.__target + " "
-            if type(cmd) == type([]):
-                ret += ' '.join(cmd)
-            else:
-                ret += cmd
+            return " ".join(full_cmd)
         else:
-            ret = [self.__adb_path]
-            if( self.__target is not None ):
-                ret += ["-s", self.__target]
-                
-            if type(cmd) == type([]):
-                for i in cmd:
-                    ret.append(i)
-            else:
-                ret += [cmd]
+            return full_cmd
 
-        return ret
-    
-    def get_output(self):
-        return self.__output
-    
-    def get_error(self):
-        return self.__error
+    def _build_command(self, cmd):
+        self._build_command_c(cmd, target=self._target)
 
-    def get_return_code(self):
-        return self.__return
-
-    def lastFailed(self):
-        """
-        Did the last command fail?
-        """
-        if self.__output is None and self.__error is not None and self.__return:
-            return True
-        return False
-
-    def run_cmd(self,cmd):
+    @classmethod
+    def run_cmd_c(cls, cmd, target=None):
         """
         Runs a command by using adb tool ($ adb <cmd>)
         """
-        self.__clean__()
+        if cls._adb_path is None:
+            raise cls.BadCall("ADB path not set")
 
-        if self.__adb_path is None:
-            self.__error = "ADB path not set"
-            self.__return = 1
-            return
-        
         # For compat of windows
-        cmd_list = self.__build_command__(cmd)
+        cmd_list = cls._build_command_c(cmd, target)
+
+        cls.LOGGER.info("Executing command: %s", cmd_list)
 
         try:
-            adb_proc = subprocess.Popen(cmd_list, stdin = subprocess.PIPE, \
-                                  stdout = subprocess.PIPE, \
-                                  stderr = subprocess.PIPE, shell = False)
-            (self.__output, self.__error) = adb_proc.communicate()
-            self.__return = adb_proc.returncode
-            self.__output = self.__output.decode('utf-8')
-            self.__error = self.__error.decode('utf-8')
+            adb_proc = subprocess.Popen(
+                    cmd_list,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=False)
+            (output, error) = adb_proc.communicate()
+            # return_code = adb_proc.returncode
+            output = output.decode('utf-8')
+            error = error.decode('utf-8')
 
-            if( len(self.__output) == 0 ):
-                self.__output = None
+            if len(output) == 0:
+                output = None
             else:
-                self.__output = [ x.strip() for x in self.__output.split('\n') if len(x.strip()) > 0 ]
+                output = [x.strip() for x in output.split('\n')
+                          if len(x.strip()) > 0]
 
-            if( len(self.__error) == 0 ):
-                self.__error = None
+        except Exception as err:
+            cls.LOGGER.exception("Unexpected exception")
+            raise cls.InternalError(str(err))
 
-        except:
-            pass
+        return output, error
 
-        return (self.__error,self.__output)
+    def run_cmd(self, cmd):
+        return self.run_cmd_c(cmd, self._target)
 
-    def get_version(self):
+    @classmethod
+    def get_version(cls):
         """
         Returns ADB tool version
         adb version
         """
-        self.run_cmd("version")
-        try:
-            ret = self.__output[0].split()[-1:][0]
-        except:
-            ret = None
-        return ret
+        output = cls._output_if_no_error(cls.run_cmd_c("version"))
+        if output is None or len(output) < 1:
+            cls.LOGGER.warning(
+                    "No version found. Check adb is on path %s.",
+                    ADB._adb_path)
+            return None
 
-    def check_path(self):
+        try:
+            ret = output[0].split()[-1:][0]
+            return ret
+        except Exception as err:
+            cls.LOGGER.exception(
+                    "Unexpected output %s caused %s", output, err)
+            raise cls.InternalError(output)
+
+    @classmethod
+    def check_path(cls):
         """
         Intuitive way to verify the ADB path
         """
-        if self.get_version() is None:
-            return False
-        return True
+        return bool(cls.get_version())
 
-    def set_adb_path(self,adb_path):
+    @classmethod
+    def set_adb_path(cls, adb_path):
         """
         Sets ADB tool absolute path
         """
-        if os.path.isfile(adb_path) is False:
-            return False
-        self.__adb_path = adb_path
-        return True
+        if not os.path.isfile(adb_path):
+            raise cls.BadCall("File not found.")
+        cls._adb_path = adb_path
 
-    def get_adb_path(self):
+    @classmethod
+    def get_adb_path(cls):
         """
         Returns ADB tool path
         """
-        return self.__adb_path
+        return cls._adb_path
 
-    def start_server(self):
+    @classmethod
+    def start_server(cls):
         """
         Starts ADB server
         adb start-server
-        """
-        self.__clean__()
-        self.run_cmd('start-server')
-        return self.__output
 
-    def kill_server(self):
+        """
+        return cls.run_cmd_c('start-server')[0]
+
+    @classmethod
+    def kill_server(cls):
         """
         Kills ADB server
         adb kill-server
-        """
-        self.__clean__()
-        self.run_cmd('kill-server')
 
-    def restart_server(self):
+        Ignores errors.
+        """
+        return cls._output_if_no_error(cls.run_cmd_c('kill-server'))
+
+    @classmethod
+    def restart_server(cls):
         """
         Restarts ADB server
         """
-        self.kill_server()
-        return self.start_server()
+        cls.kill_server()
+        return cls.start_server()
 
-    def restore_file(self,file_name):
+    def restore_file(self, file_name):
         """
         Restore device contents from the <file> backup archive
         adb restore <file>
         """
-        self.__clean__()
-        self.run_cmd(['restore' , file_name ])
-        return self.__output
+        return self._output_if_no_error(self.run_cmd(['restore', file_name]))
 
     def wait_for_device(self):
         """
         Blocks until device is online
         adb wait-for-device
         """
-        self.__clean__()
-        self.run_cmd('wait-for-device')
-        return self.__output
+        return self._output_if_no_error(self.run_cmd('wait-for-device'))
 
-    def get_help(self):
+    @classmethod
+    def get_help(cls):
         """
         Returns ADB help
         adb help
         """
-        self.__clean__()
-        self.run_cmd('help')
-        return self.__output
+        return cls._output_if_no_error(cls.run_cmd_c('help'))
 
-    def get_devices(self):
+    @classmethod
+    def get_devices(cls):
         """
         Returns a list of connected devices
         adb devices
         mode serial/usb
         """
-        error = 0
-        self.__devices = None
-        self.run_cmd("devices")
-        if self.__error is not None:
-            return (1,self.__devices)
+        cls._devices = None
+        output = cls._output_if_no_error(cls.run_cmd_c("devices"))
         try:
-            self.__devices = [x.split()[0] for x in self.__output[1:]]
-        except Exception as e:
-            self.__devices = None
-            error = 2
+            cls._devices = [x.split()[0] for x in output[1:]]
 
-        return (error,self.__devices)
+        except Exception as err:
+            # ToDo: Limit this except-clause to the specific exception.
+            cls.LOGGER.exception(
+                    "Exception being translated to PermissionsError")
+            raise cls.PermissionsError(str(err))
+        return cls._devices
 
-    def set_target_device(self,device):
+    def set_target_device(self, device):
         """
         Select the device to work with
         """
-        self.__clean__()
-        if device is None or not device in self.__devices:
-            self.__error = 'Must get device list first'
-            self.__return = 1
-            return False
-        self.__target = device
-        return True
+        if device is None:
+            raise self.BadCall('Must provide device')
+        if not self._devices:
+            raise self.BadCall('Must call get_devices() first.')
+        if device not in self._devices:
+            raise self.BadCall('Unknown device')
+
+        self._target = device
 
     def get_target_device(self):
         """
         Returns the selected device to work with
         """
-        return self.__target
+        return self._target
 
     def get_state(self):
         """
         Get ADB state
         adb get-state
         """
-        self.__clean__()
-        self.run_cmd('get-state')
-        return self.__output
+        return self._output_if_no_error(self.run_cmd('get-state'))
 
     def get_serialno(self):
         """
         Get serialno from target device
         adb get-serialno
         """
-        self.__clean__()
-        self.run_cmd('get-serialno')
-        return self.__output
+        return self._output_if_no_error(self.run_cmd('get-serialno'))
 
-    def reboot_device(self,mode):
+    def reboot_device(self, mode):
         """
         Reboot the target device
         adb reboot recovery/bootloader
         """
-        self.__clean__()
-        if not mode in (self.REBOOT_RECOVERY,self.REBOOT_BOOTLOADER):
-            self.__error = "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER"
-            self.__return = 1
-            return self.__output
-        self.run_cmd(["reboot", "%s" % "recovery" if mode == self.REBOOT_RECOVERY else "bootloader"])
-        return self.__output
+
+        if mode not in (self.REBOOT_RECOVERY, self.REBOOT_BOOTLOADER):
+            raise self.BadCall(
+                    "mode must be REBOOT_RECOVERY/REBOOT_BOOTLOADER")
+        return self._output_if_no_error(self.run_cmd(
+                ["reboot",
+                 "%s" % "recovery"
+                 if mode == self.REBOOT_RECOVERY
+                 else "bootloader"]))
 
     def set_adb_root(self):
         """
         restarts the adbd daemon with root permissions
         adb root
         """
-        self.__clean__()
-        self.run_cmd('root')
-        return self.__output
+        return self._output_if_no_error(self.run_cmd('root'))
 
     def set_system_rw(self):
         """
         Mounts /system as rw
         adb remount
         """
-        self.__clean__()
-        self.run_cmd("remount")
-        return self.__output
+        return self._output_if_no_error(self.run_cmd("remount"))
 
-    def get_remote_file(self,remote,local):
+    def get_remote_file(self, remote, local):
         """
         Pulls a remote file
         adb pull remote local
         """
-        self.__clean__()
-        self.run_cmd(['pull',remote , local] )
+        output, error = self.run_cmd(['pull', remote, local])
 
-        if self.__error is not None and "bytes in" in self.__error:
-            self.__output = self.__error
-            self.__error = None
+        if error is not None and "bytes in" in error:
+            return error
 
-        return self.__output
+        return output
 
-    def push_local_file(self,local,remote):
+    def push_local_file(self, local, remote):
         """
         Push a local file
         adb push local remote
         """
-        self.__clean__()
-        self.run_cmd(['push',local,remote] )
-        return self.__output
+        return self._output_if_no_error(self.run_cmd(['push', local, remote]))
 
-    def shell_command(self,cmd):
+    def shell_command(self, cmd):
         """
         Executes a shell command
         adb shell <cmd>
+
+        Returns output and error as tuple.
         """
-        self.__clean__()
-        self.run_cmd(['shell' , cmd])
-        return self.__output
+        return self.run_cmd(['shell', cmd])
 
     def listen_usb(self):
         """
         Restarts the adbd daemon listening on USB
         adb usb
         """
-        self.__clean__()
-        self.run_cmd("usb")
-        return self.__output
+        return self._output_if_no_error(self.run_cmd("usb"))
 
-    def listen_tcp(self,port=DEFAULT_TCP_PORT):
+    def listen_tcp(self, port=DEFAULT_TCP_PORT):
         """
         Restarts the adbd daemon listening on the specified port
         adb tcpip <port>
         """
-        self.__clean__()
-        self.run_cmd(['tcpip',port])
-        return self.__output
+        return self._output_if_no_error(self.run_cmd(['tcpip', port]))
 
     def get_bugreport(self):
         """
-        Return all information from the device that should be included in a bug report
-        adb bugreport
+        Return all information from the device that should be included in a
+        bug report adb bugreport
         """
-        self.__clean__()
-        self.run_cmd("bugreport")
-        return self.__output
+        return self._output_if_no_error(self.run_cmd("bugreport"))
 
     def get_jdwp(self):
         """
         List PIDs of processes hosting a JDWP transport
         adb jdwp
         """
-        self.__clean__()
-        self.run_cmd("jdwp")
-        return self.__output
+        return self._output_if_no_error(self.run_cmd("jdwp"))
 
-    def get_logcat(self,lcfilter=""):
+    def get_logcat(self, lcfilter=""):
         """
         View device log
         adb logcat <filter>
         """
-        self.__clean__()
-        self.run_cmd(['logcat',lcfilter])
-        return self.__output
+        return self._output_if_no_error(self.run_cmd(['logcat', lcfilter]))
 
-    def run_emulator(self,cmd=""):
+    def run_emulator(self, cmd=""):
         """
         Run emulator console command
         """
-        self.__clean__()
-        self.run_cmd(['emu',cmd])
-        return self.__output
-    
-    def connect_remote (self,host=DEFAULT_TCP_HOST,port=DEFAULT_TCP_PORT):
+        return self._output_if_no_error(self.run_cmd(['emu', cmd]))
+
+    def connect_remote(self, host=DEFAULT_TCP_HOST, port=DEFAULT_TCP_PORT):
         """
         Connect to a device via TCP/IP
         adb connect host:port
         """
-        self.__clean__()
-        self.run_cmd(['connect',"%s:%s" % ( host , port ) ] )
-        return self.__output
-    
-    def disconnect_remote (self , host=DEFAULT_TCP_HOST , port=DEFAULT_TCP_PORT):
+        return self._output_if_no_error(
+                self.run_cmd(['connect', "%s:%s" % (host, port)]))
+
+    def disconnect_remote(self, host=DEFAULT_TCP_HOST, port=DEFAULT_TCP_PORT):
         """
         Disconnect from a TCP/IP device
         adb disconnect host:port
         """
-        self.__clean__()
-        self.run_cmd(['disconnect',"%s:%s" % ( host , port ) ] )
-        return self.__output
-    
-    def ppp_over_usb(self,tty=None,params=""):
+        return self._output_if_no_error(
+                self.run_cmd(['disconnect', "%s:%s" % (host, port)]))
+
+    def ppp_over_usb(self, tty=None, params=""):
         """
         Run PPP over USB
         adb ppp <tty> <params>
         """
-        self.__clean__()
         if tty is None:
-            return self.__output
-        
-        cmd = ["ppp",tty]
+            return None
+
+        cmd = ["ppp", tty]
         if params != "":
             cmd += params
-            
-        self.run_cmd(cmd)
-        return self.__output
 
-    def sync_directory(self,directory=""):
+        return self._output_if_no_error(self.run_cmd(cmd))
+
+    def sync_directory(self, directory=""):
         """
         Copy host->device only if changed (-l means list but don't copy)
         adb sync <dir>
         """
-        self.__clean__()
-        self.run_cmd(['sync',directory])
-        return self.__output
-    
-    def forward_socket(self,local=None,remote=None):
+        return self._output_if_no_error(self.run_cmd(['sync', directory]))
+
+    def forward_socket(self, local=None, remote=None):
         """
         Forward socket connections
         adb forward <local> <remote>
         """
-        self.__clean__()
         if local is None or remote is None:
-            return self.__output
-        self.run_cmd(['forward',local,remote])
-        return self.__output
+            return None
+        return self._output_if_no_error(
+                self.run_cmd(['forward', local, remote]))
 
-
-    def uninstall(self,package=None,keepdata=False):
+    def uninstall(self, package=None, keepdata=False):
         """
         Remove this app package from the device
         adb uninstall [-k] package
         """
-        self.__clean__()
         if package is None:
-            return self.__output
+            return None
 
         cmd = 'uninstall '
         if keepdata:
             cmd += '-k '
         cmd += package
-        self.run_cmd(cmd.split())
-        return self.__output
+        return self._output_if_no_error(
+                self.run_cmd(cmd.split()))
 
-    def install(self,fwdlock=False,reinstall=False,sdcard=False,pkgapp=None):
+    def install(self, fwdlock=False, reinstall=False, sdcard=False,
+                pkgapp=None):
         """
         Push this package file to the device and install it
         adb install [-l] [-r] [-s] <file>
@@ -478,31 +466,31 @@ class ADB():
         -s -> install on sdcard instead of internal storage
         """
 
-        self.__clean__()
         if pkgapp is None:
-            return self.__output
-        
-        cmd = "install "
-        if fwdlock is True:
-            cmd += "-l "
-        if reinstall is True:
-            cmd += "-r "
-        if sdcard is True:
-            cmd += "-s "
- 
-        cmd += pkgapp
-        self.run_cmd(cmd.split())
-        return self.__output
+            return None
 
-    def find_binary(self,name=None):
+        cmd = "install "
+        if fwdlock:
+            cmd += "-l "
+        if reinstall:
+            cmd += "-r "
+        if sdcard:
+            cmd += "-s "
+
+        cmd += pkgapp
+        return self._output_if_no_error(self.run_cmd(cmd.split()))
+
+    def find_binary(self, name=None):
         """
         Look for a binary file on the device
         """
-        
-        self.run_cmd(['shell','which',name])
-        
-        if self.__output is None: # not found
-            self.__error = "'%s' was not found" % name
-        elif self.__output[0] == "which: not found": # 'which' binary not available
-            self.__output = None
-            self.__error = "which binary not found"
+
+        output, error = self.run_cmd(['shell', 'which', name])
+
+        if output is None:  # not found
+            raise self.BadCall("'%s' was not found" % name)
+        elif output[0] == "which: not found":
+            # 'which' binary not available
+            raise self.InternalError("which binary not found")
+
+        return output
